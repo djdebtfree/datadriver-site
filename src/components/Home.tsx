@@ -32,33 +32,37 @@ void RECRUITING;
 function SandyVideoWithLiveAvatar({ onSpeakToSandy }: { onSpeakToSandy: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasPlayed = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasPlayed.current) {
-          hasPlayed.current = true;
-          videoRef.current?.play().catch(() => {});
-        }
-      },
-      { threshold: 0.4 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const handlePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.play().then(() => setIsPlaying(true)).catch(() => {
+      // Browser blocked unmuted play — try muted as fallback
+      v.muted = true;
+      v.play().then(() => setIsPlaying(true)).catch(() => {});
+    });
+  };
 
   return (
     <div ref={containerRef} className="rounded-2xl overflow-hidden border border-[#e2e8f0] shadow-lg bg-white">
-      <video
-        ref={videoRef}
-        src={SANDY_VIDEO}
-        muted
-        playsInline
-        className="w-full aspect-video object-cover"
-      />
+      <div className="relative cursor-pointer" onClick={handlePlay}>
+        <video
+          ref={videoRef}
+          src={SANDY_VIDEO}
+          playsInline
+          className="w-full aspect-video object-cover"
+          onEnded={() => setIsPlaying(false)}
+        />
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity">
+            <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <svg className="w-7 h-7 text-[#0f172a] ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="p-3 space-y-3">
         <button
           onClick={onSpeakToSandy}
