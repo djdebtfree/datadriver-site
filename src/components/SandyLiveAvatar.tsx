@@ -1,9 +1,10 @@
 /**
- * SandyLiveAvatar — Auto-launching popup with Railway LiveAvatar
+ * SandyLiveAvatar — Full-screen stable popup with Railway LiveAvatar
  *
- * Shows "Sandy is Coming..." until the iframe posts a ready message,
- * then fades in. Passes user name/email/phone so Sandy greets them
- * by name and picks up from their last conversation.
+ * Desktop: Wide window (90vw, max 1100px) showing Sandy + conversation panel
+ * Mobile: Full-screen, face-only — just Sandy talking
+ * The window is FIXED and PINNED — no layout shifts, no jumping.
+ * "Sandy is Coming..." holds until iframe signals ready or 6s fallback.
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
@@ -30,6 +31,13 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
   const [fadeIn, setFadeIn] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Lock body scroll when Sandy is open
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = original; };
+  }, []);
+
   // Listen for postMessage from Sandy iframe signaling she's ready
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -41,7 +49,7 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  // Fallback: if iframe loads but never posts "sandy-ready", fade in after 6s
+  // Fallback: fade in after 6s if iframe never signals
   useEffect(() => {
     const fallback = setTimeout(() => {
       if (!sandyReady) setSandyReady(true);
@@ -49,7 +57,7 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
     return () => clearTimeout(fallback);
   }, [sandyReady]);
 
-  // Fade in once Sandy signals ready
+  // Fade in once Sandy is ready
   useEffect(() => {
     if (sandyReady) {
       const timer = setTimeout(() => setFadeIn(true), 200);
@@ -61,36 +69,41 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
     if (onClose) onClose();
   }, [onClose]);
 
-  // Build iframe URL with user context so Sandy greets by name
+  // Build iframe URL — match LiveAvatar client params exactly
+  // Client reads: email, phone, autostart (lowercase), name
   const getIframeUrl = () => {
-    const params = new URLSearchParams({ autoStart: "true" });
+    const params = new URLSearchParams();
+    params.set("autostart", "true");
+    params.set("mode", "datadriver");
     if (userInfo?.firstName) params.set("name", userInfo.firstName);
-    if (userInfo?.lastName) params.set("lastName", userInfo.lastName);
     if (userInfo?.email) params.set("email", userInfo.email);
     if (userInfo?.phone) params.set("phone", userInfo.phone);
-    // Tell Sandy to greet with name and resume prior conversation
-    params.set("greeting", `Hi ${userInfo?.firstName || "there"}`);
-    params.set("resumeConversation", "true");
     return `${LIVEAVATAR_APP_URL}?${params.toString()}`;
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={handleClose}
-    >
+    <>
+      {/* Full-screen overlay — FIXED position, no scroll, no layout shift */}
       <div
-        className="relative w-[95vw] max-w-2xl h-[80vh] max-h-[700px] bg-[#0b1120] rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col animate-in fade-in zoom-in-95 duration-300"
+        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm"
+        style={{ isolation: "isolate" }}
+        onClick={handleClose}
+      />
+
+      {/* Sandy container — FIXED, centered, does NOT participate in document flow */}
+      <div
+        className="fixed z-[10000] bg-[#0b1120] shadow-2xl border border-white/10 overflow-hidden flex flex-col
+          inset-0 rounded-none
+          md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
+          md:w-[90vw] md:max-w-[1100px] md:h-[85vh] md:max-h-[800px] md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0f172a] border-b border-white/10 shrink-0">
+        {/* Top bar — thin, stable height */}
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#0f172a] border-b border-white/10 shrink-0 h-12">
           <div className="flex items-center gap-3">
-            <img src={JUNE_UPPER} alt="Sandy" className="w-8 h-8 rounded-full object-cover" />
-            <div>
-              <span className="text-white text-sm font-semibold">Sandy Beach Live!</span>
-              <span className="text-[#0d9488] text-xs ml-2">AI-Powered</span>
-            </div>
+            <img src={JUNE_UPPER} alt="Sandy" className="w-7 h-7 rounded-full object-cover" />
+            <span className="text-white text-sm font-semibold">Sandy Beach</span>
+            <span className="text-[#0d9488] text-xs">Live</span>
             <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
           </div>
           <button
@@ -102,40 +115,43 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
           </button>
         </div>
 
-        {/* Iframe + loading overlay */}
-        <div className="flex-1 relative">
-          {/* "Sandy is Coming..." stays until she's ready */}
-          {!fadeIn && (
-            <div className="absolute inset-0 z-10 bg-[#0b1120] flex flex-col items-center justify-center transition-opacity duration-700">
-              <div className="relative w-20 h-20 mb-4">
-                <img
-                  src={JUNE_UPPER}
-                  alt="Sandy"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-[#0d9488]"
-                />
-                <div className="absolute inset-0 rounded-full border-2 border-[#0d9488] animate-ping opacity-30" />
-              </div>
-              <p className="text-white text-base font-semibold mb-1">Sandy is Coming...</p>
-              {userInfo?.firstName && (
-                <p className="text-white/40 text-sm">Getting ready for you, {userInfo.firstName}</p>
-              )}
-              <div className="flex justify-center gap-1 mt-3">
-                <span className="w-2 h-2 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
+        {/* Content area — fills remaining space, no resize */}
+        <div className="flex-1 relative min-h-0">
+          {/* "Sandy is Coming..." loading screen */}
+          <div
+            className={`absolute inset-0 z-10 bg-[#0b1120] flex flex-col items-center justify-center transition-opacity duration-700 ${fadeIn ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          >
+            <div className="relative w-24 h-24 mb-5">
+              <img
+                src={JUNE_UPPER}
+                alt="Sandy"
+                className="w-24 h-24 rounded-full object-cover border-2 border-[#0d9488]"
+              />
+              <div className="absolute inset-0 rounded-full border-2 border-[#0d9488] animate-ping opacity-30" />
             </div>
-          )}
+            <p className="text-white text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-display)" }}>
+              Sandy is Coming...
+            </p>
+            {userInfo?.firstName && (
+              <p className="text-white/40 text-sm">Getting ready for you, {userInfo.firstName}</p>
+            )}
+            <div className="flex justify-center gap-1.5 mt-4">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488] animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
+          </div>
 
-          {/* Iframe loads immediately (hidden behind loading screen) */}
+          {/* Iframe — loads immediately, hidden behind loading screen, fixed size */}
           <iframe
             ref={iframeRef}
             src={getIframeUrl()}
-            className={`w-full h-full border-0 transition-opacity duration-700 ${fadeIn ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 w-full h-full border-0 transition-opacity duration-700 ${fadeIn ? "opacity-100" : "opacity-0"}`}
             allow="camera; microphone; autoplay; fullscreen"
+            style={{ display: "block" }}
           />
         </div>
       </div>
-    </div>
+    </>
   );
 }
