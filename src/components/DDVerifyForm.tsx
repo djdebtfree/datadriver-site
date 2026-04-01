@@ -8,7 +8,7 @@ import { useState, useCallback } from "react";
 import { ArrowRight, Loader2, CheckCircle, MessageSquare } from "lucide-react";
 
 const DD_VERIFY_CONFIG = {
-  IMESSAGE_NUMBER: "+1XXXXXXXXXX", // placeholder — update when number provided
+  IMESSAGE_NUMBER: "+17322070788",
   API_URL: "https://imessage-relay.up.railway.app",
   GHL_WEBHOOK_URL: "",
 };
@@ -79,46 +79,45 @@ export default function DDVerifyForm({
     setLoading(true);
 
     const normalizedPhone = normPhone(phone);
+    const userInfo = { firstName, lastName, email, phone: normalizedPhone };
 
-    try {
-      const res = await fetch(`${DD_VERIFY_CONFIG.API_URL}/api/capture-and-verify`, {
+    // Fire API + GHL webhook as best-effort (non-blocking)
+    // The form succeeds regardless — Sandy takes over
+    fetch(`${DD_VERIFY_CONFIG.API_URL}/api/capture-and-verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...userInfo,
+        source: "verify_form",
+        timestamp: new Date().toISOString(),
+      }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (res.ok && data.token) {
+        openMessaging(data.token, firstName);
+        setSuccessToken(data.token);
+      }
+    }).catch(() => {
+      // Relay is down — no SMS verification, Sandy handles it
+    });
+
+    if (DD_VERIFY_CONFIG.GHL_WEBHOOK_URL) {
+      fetch(DD_VERIFY_CONFIG.GHL_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          phone: normalizedPhone,
-          source: "verify_form",
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
-
-      // Fire GHL webhook if configured
-      if (DD_VERIFY_CONFIG.GHL_WEBHOOK_URL) {
-        fetch(DD_VERIFY_CONFIG.GHL_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ firstName, lastName, email, phone: normalizedPhone }),
-        }).catch(() => {});
-      }
-
-      // Open native messaging
-      openMessaging(data.token, firstName);
-      setSuccessToken(data.token);
-
-      // Fire onSuccess callback if provided
-      if (onSuccess) {
-        onSuccess({ firstName, lastName, email, phone: normalizedPhone });
-      }
-    } catch (err: unknown) {
-      setError((err instanceof Error ? err.message : null) || "Connection error. Please try again.");
-    } finally {
-      setLoading(false);
+        body: JSON.stringify(userInfo),
+      }).catch(() => {});
     }
+
+    // Always fire onSuccess — Sandy Live Avatar takes over from here
+    if (onSuccess) {
+      onSuccess(userInfo);
+    } else {
+      // No onSuccess handler — show success state directly
+      setSuccessToken("local");
+    }
+
+    setLoading(false);
   }, [form, onSuccess]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

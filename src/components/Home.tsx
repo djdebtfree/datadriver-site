@@ -862,7 +862,10 @@ export default function Home() {
               <Target className="w-4 h-4" /> Selected: {selectedNiche}
             </div>
           )}
-          <DDVerifyForm title="" subtitle="" onGHLClick={() => setShowGHLForm(true)} />
+          <DDVerifyForm title="" subtitle="" onGHLClick={() => setShowGHLForm(true)} onSuccess={(info) => {
+              setSandyUserInfo(info);
+              setShowSandyLive(true);
+            }} />
         </div>
       </section>
 
@@ -873,7 +876,11 @@ export default function Home() {
             <button onClick={() => setShowPopup(false)} className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center shadow-lg hover:bg-[#1e293b] transition-colors">
               <X className="w-4 h-4" />
             </button>
-            <DDVerifyForm title="" subtitle="" onGHLClick={() => { setShowPopup(false); setShowGHLForm(true); }} />
+            <DDVerifyForm title="" subtitle="" onGHLClick={() => { setShowPopup(false); setShowGHLForm(true); }} onSuccess={(info) => {
+                setShowPopup(false);
+                setSandyUserInfo(info);
+                setShowSandyLive(true);
+              }} />
           </div>
         </div>
       )}
