@@ -243,12 +243,100 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleCheckout = async (_product: "sales_prospects" | "remote_sales_recruits" | "dd_pro") => {
-    setCheckoutLoading(_product);
+  // Track captured user info from any form submission
+  const [capturedUser, setCapturedUser] = useState<{ firstName: string; lastName: string; email: string; phone: string; clientId?: string; stripeCustomerId?: string } | null>(null);
+  const [pendingProduct, setPendingProduct] = useState<"sales_prospects" | "remote_sales_recruits" | "dd_pro" | null>(null);
+
+  const handleCheckout = async (product: "sales_prospects" | "remote_sales_recruits" | "dd_pro") => {
+    // If we don't have user info yet, show popup to collect it first
+    if (!capturedUser) {
+      setPendingProduct(product);
+      setShowPopup(true);
+      return;
+    }
+
+    setCheckoutLoading(product);
     try {
-      toast.info("Checkout coming soon — contact us at (732) 207-0788");
+      // Map product to checkout params
+      const productConfig = {
+        sales_prospects: { target_market: "sales_prospects", record_count: 100, label: "100 Sales Prospects" },
+        remote_sales_recruits: { target_market: "remote_sales_recruits", record_count: 100, label: "100 Remote Sales Recruits" },
+        dd_pro: { target_market: "dd_pro", record_count: 2000, label: "Data Driver Pro" },
+      }[product];
+
+      // Step 1: Ensure client exists
+      let clientId = capturedUser.clientId;
+      let stripeCustomerId = capturedUser.stripeCustomerId;
+
+      if (!clientId) {
+        // Check if client already exists
+        const checkRes = await fetch("/api/check-client", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: capturedUser.email }),
+        });
+        const checkData = await checkRes.json();
+
+        if (checkData.found) {
+          clientId = checkData.client.id;
+          stripeCustomerId = checkData.client.stripe_customer_id;
+        } else {
+          // Create new client
+          const createRes = await fetch("/api/create-client", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: capturedUser.email,
+              first_name: capturedUser.firstName,
+              last_name: capturedUser.lastName,
+              phone: capturedUser.phone,
+            }),
+          });
+          const createData = await createRes.json();
+          if (!createRes.ok) throw new Error(createData.error || "Failed to create account");
+          clientId = createData.client.id;
+          stripeCustomerId = createData.client.stripe_customer_id;
+        }
+
+        setCapturedUser((prev) => prev ? { ...prev, clientId, stripeCustomerId } : prev);
+      }
+
+      // Step 2: Create payment session
+      const payRes = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          stripe_customer_id: stripeCustomerId,
+          record_count: productConfig.record_count,
+          target_market: productConfig.target_market,
+        }),
+      });
+      const payData = await payRes.json();
+      if (!payRes.ok) throw new Error(payData.error || "Checkout failed");
+
+      toast.info("Redirecting to checkout...");
+      window.open(payData.checkout_url, "_blank");
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : null) || "Could not start checkout. Please try again.");
     } finally {
       setCheckoutLoading(null);
+    }
+  };
+
+  // When user submits a form and we have a pending product, trigger checkout
+  const handleUserCaptured = (info: { firstName: string; lastName: string; email: string; phone: string }) => {
+    setCapturedUser(info);
+    setSandyUserInfo(info);
+    setShowPopup(false);
+    setShowSandyLive(true);
+
+    // If there was a pending checkout, execute it
+    if (pendingProduct) {
+      const product = pendingProduct;
+      setPendingProduct(null);
+      // Small delay to let state settle, then checkout
+      setTimeout(() => handleCheckout(product), 500);
     }
   };
 
@@ -866,10 +954,7 @@ export default function Home() {
               <Target className="w-4 h-4" /> Selected: {selectedNiche}
             </div>
           )}
-          <DDVerifyForm title="" subtitle="" onGHLClick={() => setShowGHLForm(true)} onSuccess={(info) => {
-              setSandyUserInfo(info);
-              setShowSandyLive(true);
-            }} />
+          <DDVerifyForm title="" subtitle="" onGHLClick={() => setShowGHLForm(true)} onSuccess={handleUserCaptured} />
         </div>
       </section>
 
@@ -880,11 +965,7 @@ export default function Home() {
             <button onClick={() => setShowPopup(false)} className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center shadow-lg hover:bg-[#1e293b] transition-colors">
               <X className="w-4 h-4" />
             </button>
-            <DDVerifyForm title="" subtitle="" onGHLClick={() => { setShowPopup(false); setShowGHLForm(true); }} onSuccess={(info) => {
-                setShowPopup(false);
-                setSandyUserInfo(info);
-                setShowSandyLive(true);
-              }} />
+            <DDVerifyForm title="" subtitle="" onGHLClick={() => { setShowPopup(false); setShowGHLForm(true); }} onSuccess={handleUserCaptured} />
           </div>
         </div>
       )}
@@ -976,9 +1057,8 @@ export default function Home() {
               title=""
               subtitle=""
               onSuccess={(info) => {
-                setSandyUserInfo(info);
                 setShowSandyForm(false);
-                setShowSandyLive(true);
+                handleUserCaptured(info);
               }}
             />
           </div>

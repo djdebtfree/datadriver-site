@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Driver — Purchase Complete</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { max-width: 540px; width: 100%; padding: 2rem; text-align: center; }
+    h1 { font-family: 'DM Sans', system-ui, sans-serif; font-size: 2rem; margin-bottom: 0.5rem; }
+    .subtitle { color: rgba(255,255,255,0.5); margin-bottom: 2rem; }
+    .card { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; padding: 2rem; margin-bottom: 1.5rem; }
+    .check { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #eab308, #0d9488); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem; }
+    .status { font-size: 0.875rem; color: rgba(255,255,255,0.6); margin-bottom: 1rem; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #0d9488; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .download-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #eab308, #0d9488); color: #0f172a; font-weight: 600; padding: 0.875rem 2rem; border-radius: 9999px; text-decoration: none; font-size: 1rem; border: none; cursor: pointer; transition: all 0.2s; }
+    .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(13,148,136,0.3); }
+    .download-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .error { color: #ef4444; font-size: 0.875rem; margin-top: 1rem; }
+    .back-link { display: inline-block; margin-top: 1.5rem; color: rgba(255,255,255,0.4); text-decoration: none; font-size: 0.875rem; }
+    .back-link:hover { color: white; }
+    .details { text-align: left; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+    .detail-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.875rem; }
+    .detail-row span:first-child { color: rgba(255,255,255,0.5); }
+    .detail-row span:last-child { font-weight: 600; color: #0d9488; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="check">✓</div>
+      <h1>Payment Confirmed!</h1>
+      <p class="subtitle">Your data is being prepared for download.</p>
+
+      <div id="status" class="status">
+        <span class="spinner"></span> Generating your CSV file...
+      </div>
+
+      <div id="download-area" style="display: none;">
+        <a id="download-btn" class="download-btn" href="#" target="_blank">
+          ⬇ Download Your Data (CSV)
+        </a>
+        <div id="details" class="details"></div>
+      </div>
+
+      <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <a href="/" class="back-link">← Back to Data Driver</a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const purchaseId = params.get('purchase_id');
+
+    if (!purchaseId) {
+      document.getElementById('status').innerHTML = 'No purchase ID found.';
+      document.getElementById('error').textContent = 'Missing purchase_id parameter. Please check your email for a download link.';
+      document.getElementById('error').style.display = 'block';
+    } else {
+      generateCSV(purchaseId);
+    }
+
+    async function generateCSV(purchaseId) {
+      try {
+        const res = await fetch('/api/generate-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ purchase_id: purchaseId }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          // If payment not confirmed yet, retry after 3 seconds
+          if (res.status === 403) {
+            document.getElementById('status').innerHTML =
+              '<span class="spinner"></span> Payment processing... checking again shortly.';
+            setTimeout(() => generateCSV(purchaseId), 3000);
+            return;
+          }
+          throw new Error(data.error || 'Failed to generate CSV');
+        }
+
+        // Show download button
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('download-area').style.display = 'block';
+
+        if (data.download_url) {
+          document.getElementById('download-btn').href = data.download_url;
+        } else if (data.csv_base64) {
+          // Fallback: create blob URL from base64
+          const blob = new Blob([atob(data.csv_base64)], { type: 'text/csv' });
+          document.getElementById('download-btn').href = URL.createObjectURL(blob);
+          document.getElementById('download-btn').setAttribute('download', `data-driver-${purchaseId}.csv`);
+        }
+
+        // Show details
+        if (data.record_count) {
+          document.getElementById('details').innerHTML = `
+            <div class="detail-row"><span>Records</span><span>${data.record_count.toLocaleString()}</span></div>
+            <div class="detail-row"><span>Purchase ID</span><span>${purchaseId.substring(0, 8)}...</span></div>
+            <div class="detail-row"><span>Format</span><span>CSV</span></div>
+            <div class="detail-row"><span>Link expires</span><span>1 hour</span></div>
+          `;
+        }
+
+      } catch (err) {
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('error').textContent = err.message || 'Something went wrong. Contact support at (732) 207-0788.';
+        document.getElementById('error').style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
