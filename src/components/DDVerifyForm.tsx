@@ -176,12 +176,11 @@ export default function DDVerifyForm({
               Tap here to try again.
             </button>
           </p>
-          {/* Redirect to order leads form */}
           <a
             href={ORDER_FORM_URL}
             className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3 md:py-4 rounded-lg bg-gradient-to-r from-[#0766ee] to-[#3ce19b] text-[#020509] font-bold text-sm md:text-base hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] transition-all no-underline"
           >
-            Browse & Order Leads <ArrowRight className="w-4 h-4" />
+            Browse &amp; Order Leads <ArrowRight className="w-4 h-4" />
           </a>
         </div>
       </div>

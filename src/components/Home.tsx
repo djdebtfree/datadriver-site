@@ -432,7 +432,7 @@ export default function Home() {
             <span className="bg-gradient-to-r from-[#eab308] to-[#0d9488] bg-clip-text text-transparent">Reach Them First.</span>
           </h1>
           <p className="text-white/60 text-sm sm:text-lg max-w-2xl mx-auto mb-8">
-            See who's searching the moment they start. Sales or recruiting—we've got both. Call them. Email them. Or let us do it for you.
+            Data Driver is a system that gives you contact info for real people who are already looking for something.
           </p>
           <div className="flex justify-center mb-8">
             <button onClick={() => scrollTo("pricing")} className="btn-cta text-base">
