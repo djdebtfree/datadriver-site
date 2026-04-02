@@ -57,11 +57,30 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
     return () => clearTimeout(fallback);
   }, [sandyReady]);
 
-  // Fade in once Sandy is ready
+  // Fade in once Sandy is ready, then auto-click "Start Conversation" in iframe
   useEffect(() => {
     if (sandyReady) {
       const timer = setTimeout(() => setFadeIn(true), 200);
-      return () => clearTimeout(timer);
+
+      // Auto-click the Start Conversation button inside the iframe
+      // Try postMessage first (preferred), then direct DOM access as fallback
+      const autoStart = setTimeout(() => {
+        const iframe = iframeRef.current;
+        if (!iframe) return;
+
+        // Method 1: postMessage to iframe app (if it listens for this)
+        try {
+          iframe.contentWindow?.postMessage({ type: 'auto-start-conversation' }, '*');
+        } catch (_) { /* cross-origin, expected */ }
+
+        // Method 2: Direct DOM click (works if same-origin or CORS allows)
+        try {
+          const btn = iframe.contentDocument?.querySelector('button[class*="Start"], button[class*="start"], .start-btn, [data-action="start"]') as HTMLButtonElement | null;
+          if (btn) btn.click();
+        } catch (_) { /* cross-origin block, expected */ }
+      }, 1500);
+
+      return () => { clearTimeout(timer); clearTimeout(autoStart); };
     }
   }, [sandyReady]);
 
