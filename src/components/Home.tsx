@@ -33,13 +33,38 @@ function SandyVideoWithLiveAvatar({ onSpeakToSandy }: { onSpeakToSandy: () => vo
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
+
+  // Autoplay muted when scrolled into view
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasAutoPlayed) {
+            video.muted = true;
+            video.play().then(() => {
+              setIsPlaying(true);
+              setHasAutoPlayed(true);
+            }).catch(() => {});
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [hasAutoPlayed]);
 
   const handlePlay = () => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = false;
+    v.currentTime = 0;
     v.play().then(() => setIsPlaying(true)).catch(() => {
-      // Browser blocked unmuted play — try muted as fallback
       v.muted = true;
       v.play().then(() => setIsPlaying(true)).catch(() => {});
     });
@@ -231,17 +256,18 @@ export default function Home() {
   const [calcMarkup, setCalcMarkup] = useState(0.25);
   const [calcLeads, setCalcLeads] = useState(500);
 
-  // Show popup form 10 seconds after page load
-  useEffect(() => {
-    if (popupShown.current) return;
-    const timer = setTimeout(() => {
-      if (!popupShown.current) {
-        setShowPopup(true);
-        popupShown.current = true;
-      }
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Popup auto-show disabled — was triggering before trust was established
+  // Form now only shows on explicit user action (CTA clicks)
+  // useEffect(() => {
+  //   if (popupShown.current) return;
+  //   const timer = setTimeout(() => {
+  //     if (!popupShown.current) {
+  //       setShowPopup(true);
+  //       popupShown.current = true;
+  //     }
+  //   }, 10000);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   // Track captured user info from any form submission
   const [capturedUser, setCapturedUser] = useState<{ firstName: string; lastName: string; email: string; phone: string; clientId?: string; stripeCustomerId?: string } | null>(null);
@@ -324,19 +350,20 @@ export default function Home() {
     }
   };
 
-  // When user submits a form and we have a pending product, trigger checkout
+  // When user submits the lead capture form, redirect to order leads page
   const handleUserCaptured = (info: { firstName: string; lastName: string; email: string; phone: string }) => {
     setCapturedUser(info);
     setSandyUserInfo(info);
     setShowPopup(false);
-    setShowSandyLive(true);
 
     // If there was a pending checkout, execute it
     if (pendingProduct) {
       const product = pendingProduct;
       setPendingProduct(null);
-      // Small delay to let state settle, then checkout
       setTimeout(() => handleCheckout(product), 500);
+    } else {
+      // Default: redirect to the order leads page
+      window.location.href = `https://data-driver-form.vercel.app?ref=datadriverpro&email=${encodeURIComponent(info.email)}&name=${encodeURIComponent(info.firstName)}`;
     }
   };
 
@@ -1054,11 +1081,13 @@ export default function Home() {
               <X className="w-4 h-4" />
             </button>
             <DDVerifyForm
-              title=""
-              subtitle=""
+              title="Talk to Sandy"
+              subtitle="She's ready when you are."
               onSuccess={(info) => {
+                setCapturedUser(info);
+                setSandyUserInfo(info);
                 setShowSandyForm(false);
-                handleUserCaptured(info);
+                setShowSandyLive(true);
               }}
             />
           </div>
