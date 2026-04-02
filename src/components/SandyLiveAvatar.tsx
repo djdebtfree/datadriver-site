@@ -133,21 +133,31 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
           md:w-[90vw] md:max-w-[1100px] md:h-[85vh] md:max-h-[800px] md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top bar — thin, stable height */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-[#0f172a] border-b border-white/10 shrink-0 h-12">
-          <div className="flex items-center gap-3">
-            <img src={JUNE_UPPER} alt="Sandy" className="w-7 h-7 rounded-full object-cover" />
-            <span className="text-white text-sm font-semibold">Sandy Beach</span>
-            <span className="text-[#0d9488] text-xs">Live</span>
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
+        {/* Top bar with Sandy branding */}
+        <div className="bg-[#0f172a] border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between px-4 py-2 h-12">
+            <div className="flex items-center gap-3">
+              <img src={JUNE_UPPER} alt="Sandy" className="w-7 h-7 rounded-full object-cover" />
+              <span className="text-white text-sm font-semibold">Sandy Beach</span>
+              <span className="text-[#0d9488] text-xs">Live</span>
+              <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
+            </div>
+            <button
+              onClick={handleClose}
+              className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="text-center pb-2 px-4">
+            <h2 className="text-white text-base md:text-lg font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              Meet Sandy Beach AI — Your New Rep / Recruiter / Coach
+            </h2>
+            <p className="text-[#0d9488] text-xs font-medium mt-0.5">
+              Only available with Data Driver Pro
+            </p>
+          </div>
         </div>
 
         {/* Content area — fills remaining space, no resize */}
