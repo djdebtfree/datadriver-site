@@ -161,12 +161,12 @@ export default function DDVerifyForm({
             ✓
           </div>
           <h2 className={`text-xl font-bold mb-2 ${successTextColor}`} style={{ fontFamily: "var(--font-display)" }}>
-            You're all set!
+            You're verified, {form.firstName}!
           </h2>
           <p className={`text-sm ${successSubColor}`}>
             {isAppleDevice
-              ? "Your Messages app should have opened. Just tap send on the pre-filled message and you're in."
-              : "Your messaging app should have opened. Just tap send on the pre-filled message and you're in."}
+              ? "Your Messages app should have opened. Tap send to verify your number."
+              : "Your messaging app should have opened. Tap send to verify your number."}
           </p>
           <p className="mt-3 text-xs text-[#858481]">
             Didn't open?{" "}
@@ -174,6 +174,12 @@ export default function DDVerifyForm({
               Tap here to try again.
             </button>
           </p>
+          <a
+            href={`https://data-driver-form.vercel.app?ref=datadriverpro&email=${encodeURIComponent(form.email)}&name=${encodeURIComponent(form.firstName)}`}
+            className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3 md:py-4 rounded-lg bg-gradient-to-r from-[#0766ee] to-[#3ce19b] text-[#020509] font-bold text-sm md:text-base hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] transition-all no-underline"
+          >
+            Browse &amp; Order Leads <ArrowRight className="w-4 h-4" />
+          </a>
         </div>
       </div>
     );
