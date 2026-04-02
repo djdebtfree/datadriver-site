@@ -247,7 +247,6 @@ export default function Home() {
   const [selectedNiche, setSelectedNiche] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-  const popupShown = useRef(false);
   const [showSandyLive, setShowSandyLive] = useState(false);
   const [sandyUserInfo, setSandyUserInfo] = useState<{ firstName: string; lastName: string; email: string; phone: string } | undefined>(undefined);
   const [showSandyForm, setShowSandyForm] = useState(false);
@@ -256,18 +255,7 @@ export default function Home() {
   const [calcMarkup, setCalcMarkup] = useState(0.25);
   const [calcLeads, setCalcLeads] = useState(500);
 
-  // Popup auto-show disabled — was triggering before trust was established
-  // Form now only shows on explicit user action (CTA clicks)
-  // useEffect(() => {
-  //   if (popupShown.current) return;
-  //   const timer = setTimeout(() => {
-  //     if (!popupShown.current) {
-  //       setShowPopup(true);
-  //       popupShown.current = true;
-  //     }
-  //   }, 10000);
-  //   return () => clearTimeout(timer);
-  // }, []);
+  // Popup auto-show removed — form only appears on explicit user action
 
   // Track captured user info from any form submission
   const [capturedUser, setCapturedUser] = useState<{ firstName: string; lastName: string; email: string; phone: string; clientId?: string; stripeCustomerId?: string } | null>(null);

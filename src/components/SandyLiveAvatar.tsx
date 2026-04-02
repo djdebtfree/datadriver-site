@@ -31,11 +31,27 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
   const [fadeIn, setFadeIn] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Lock body scroll when Sandy is open
+  // Lock ALL scrolling when Sandy is open — prevent iframe from autoscrolling the page
   useEffect(() => {
     const original = document.body.style.overflow;
+    const originalHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = original; };
+    document.documentElement.style.overflow = "hidden";
+    // Prevent any scroll events from bubbling out of the iframe
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName !== 'IFRAME') return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('scroll', preventScroll, { capture: true });
+    // Force scroll to top of Sandy overlay
+    window.scrollTo({ top: 0 });
+    return () => {
+      document.body.style.overflow = original;
+      document.documentElement.style.overflow = originalHtml;
+      window.removeEventListener('scroll', preventScroll, { capture: true });
+    };
   }, []);
 
   // Listen for postMessage from Sandy iframe signaling she's ready
