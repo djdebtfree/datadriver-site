@@ -150,18 +150,18 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="text-center pb-2 px-4">
-            <h2 className="text-white text-base md:text-lg font-bold" style={{ fontFamily: "var(--font-display)" }}>
-              Meet Sandy Beach AI — Your New Rep / Recruiter / Coach
-            </h2>
-            <p className="text-[#0d9488] text-xs font-medium mt-0.5">
-              Only available with Data Driver Pro
-            </p>
-          </div>
         </div>
 
         {/* Content area — fills remaining space, no resize */}
         <div className="flex-1 relative min-h-0">
+          {/* Cover the iframe's built-in "LiveAvatar Agent" header */}
+          <div className="absolute top-0 left-0 right-0 z-20 bg-[#0b1120] text-center py-3 px-4 border-b border-white/5">
+            <h2 className="text-white text-lg md:text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+              Meet Sandy Beach AI
+            </h2>
+            <p className="text-white/60 text-sm mt-0.5">Your New Rep / Recruiter / Coach</p>
+            <p className="text-[#0d9488] text-xs font-medium mt-1">Only available with Data Driver Pro</p>
+          </div>
           {/* "Sandy is Coming..." loading screen */}
           <div
             className={`absolute inset-0 z-10 bg-[#0b1120] flex flex-col items-center justify-center transition-opacity duration-700 ${fadeIn ? "opacity-0 pointer-events-none" : "opacity-100"}`}
@@ -187,13 +187,13 @@ export default function SandyLiveAvatar({ onClose, userInfo }: SandyLiveAvatarPr
             </div>
           </div>
 
-          {/* Iframe — loads immediately, hidden behind loading screen, fixed size */}
+          {/* Iframe — offset down to hide iframe's built-in "LiveAvatar Agent" header behind our branding */}
           <iframe
             ref={iframeRef}
             src={getIframeUrl()}
-            className={`absolute inset-0 w-full h-full border-0 transition-opacity duration-700 ${fadeIn ? "opacity-100" : "opacity-0"}`}
+            className={`absolute left-0 right-0 bottom-0 w-full border-0 transition-opacity duration-700 ${fadeIn ? "opacity-100" : "opacity-0"}`}
             allow="camera; microphone; autoplay; fullscreen"
-            style={{ display: "block" }}
+            style={{ display: "block", top: "20px", height: "calc(100% - 20px)" }}
           />
         </div>
       </div>
